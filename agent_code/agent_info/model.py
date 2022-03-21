@@ -4,6 +4,10 @@ from collections import defaultdict
 
 
 class Q_Table:
+    q_table = defaultdict(
+        lambda: np.zeros([6])  # [game.action_space_size])
+    )  # We should start small and build as goes for faster look ups and less memory usage
+
     def __init__(self, game, actions) -> None:
 
         self.alpha = 0.1
@@ -16,13 +20,9 @@ class Q_Table:
 
         self.actions = actions
 
-        self.q_table = defaultdict(
-            lambda: np.zeros([game.action_space_size])
-        )  # We should start small and build as goes for faster look ups and less memory usage
-
     def choose_action(self, features):
 
-        action_index = np.argmax(self.q_table[features])
+        action_index = np.argmax(Q_Table.q_table[features])
         return self.actions[action_index]
 
     def update_q(self, batch):
@@ -44,14 +44,14 @@ class Q_Table:
 
             # We do not have to check if either of those exist
             # If they dont default dict creates an np.zero array for us with that key
-            exspected_reward = self.q_table[old_ft][action_index]
-            max_next_reward = np.max(self.q_table[new_ft])
+            exspected_reward = Q_Table.q_table[old_ft][action_index]
+            max_next_reward = np.max(Q_Table.q_table[new_ft])
 
             # The actual Q update step based on temporal difference
             updated_q = (1 - self.alpha) * exspected_reward + self.alpha * (
-                rewards + self.gamma * max_next_reward
+                    rewards + self.gamma * max_next_reward
             )
-            self.q_table[old_ft][action_index] = updated_q
+            Q_Table.q_table[old_ft][action_index] = updated_q
 
             if self.epsilon < 1 - self.min_exploration:
                 self.epsilon += self.exploration_decay
@@ -67,9 +67,9 @@ class Q_Table:
 
         # We do not have to check if either of those exist
         # If they dont default dict creates an np.zero array for us with that key
-        exspected_reward = self.q_table[old_ft][action_index]
+        exspected_reward = Q_Table.q_table[old_ft][action_index]
 
         # The actual Q update step based on temporal difference
         updated_q = (1 - self.alpha) * exspected_reward + self.alpha * rewards
 
-        self.q_table[old_ft][action_index] = updated_q
+        Q_Table.q_table[old_ft][action_index] = updated_q

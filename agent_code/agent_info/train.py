@@ -42,8 +42,6 @@ def setup_training(self):
 
     self.batch_size = 10
 
-    with open("model.pt", "wb") as file:
-        pickle.dump(self.model, file)
     rb_setup(self)
 
 
@@ -56,7 +54,7 @@ def train_act(self, gamestate):
     else:
         action = self.model.choose_action(features)
 
-    self.logger.debug(f"Action taken:", action)
+    #self.logger.debug(f"Action taken:", action)
 
     return action
 
@@ -84,9 +82,9 @@ def game_events_occurred(
     :param new_game_state: The state the agent is in now.
     :param events: The events that occurred when going from  `old_game_state` to `new_game_state`
     """
-    self.logger.debug(
-        f'Encountered game event(s) {", ".join(map(repr, events))} in step {new_game_state["step"]}'
-    )
+    #self.logger.debug(
+    #     f'Encountered game event(s) {", ".join(map(repr, events))} in step {new_game_state["step"]}'
+    #)
 
     # Idea: Add your own events to hand out rewards
     if ...:
@@ -95,14 +93,16 @@ def game_events_occurred(
     self.transitions.append(
         Transition(
             state_to_features(old_game_state),
-            np.where(self.actions == self_action)[0][0],
+            np.where(ACTIONS == self_action)[0],
             state_to_features(new_game_state),
             reward_from_events(self, events),
         )
     )
 
-    if self.transitions > self.batch_size:
+    if len(self.transitions) > self.batch_size:
         batch = sample(self.transitions, self.batch_size)
+
+        #getattr(self.model, 'q_table')
         self.model.update_q(batch)
 
 
@@ -119,14 +119,14 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
 
     :param self: The same object that is passed to all of your callbacks.
     """
-    self.logger.debug(
-        f'Encountered event(s) {", ".join(map(repr, events))} in final step'
-    )
+    #self.logger.debug(
+    #    f'Encountered event(s) {", ".join(map(repr, events))} in final step'
+    #)
     # self.transitions.append(Transition(state_to_features(last_game_state), last_action, None, reward_from_events(self, events)))
 
     # Store the model
     with open("model.pt", "wb") as file:
-        pickle.dump(self.model, file)
+        pickle.dump(getattr(self.model, 'q_table'), file)
 
 
 def reward_from_events(self, events: List[str]) -> int:
@@ -151,5 +151,5 @@ def reward_from_events(self, events: List[str]) -> int:
     for event in events:
         if event in game_rewards:
             reward_sum += game_rewards[event]
-    self.logger.info(f"Awarded {reward_sum} for events {', '.join(events)}")
+    #self.logger.info(f"Awarded {reward_sum} for events {', '.join(events)}")
     return reward_sum

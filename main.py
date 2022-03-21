@@ -1,5 +1,6 @@
 import os
 from argparse import ArgumentParser
+from functools import partial
 from pathlib import Path
 from time import sleep, time
 from tqdm import tqdm
@@ -8,6 +9,8 @@ import settings as s
 from environment import BombeRLeWorld, GUI
 from fallbacks import pygame, LOADED_PYGAME
 from replay import ReplayWorld
+
+import multiprocessing as mp
 
 ESCAPE_KEYS = (pygame.K_q, pygame.K_ESCAPE)
 
@@ -94,7 +97,7 @@ def world_controller(world, n_rounds, /,
     world.end()
 
 
-def main(argv = None):
+def main(argv=None):
     parser = ArgumentParser()
 
     subparsers = parser.add_subparsers(dest='command_name', required=True)
@@ -103,7 +106,8 @@ def main(argv = None):
     play_parser = subparsers.add_parser("play")
     agent_group = play_parser.add_mutually_exclusive_group()
     agent_group.add_argument("--my-agent", type=str, help="Play agent of name ... against three rule_based_agents")
-    agent_group.add_argument("--agents", type=str, nargs="+", default=["rule_based_agent"] * s.MAX_AGENTS, help="Explicitly set the agent names in the game")
+    agent_group.add_argument("--agents", type=str, nargs="+", default=["rule_based_agent"] * s.MAX_AGENTS,
+                             help="Explicitly set the agent names in the game")
     play_parser.add_argument("--train", default=0, type=int, choices=[0, 1, 2, 3, 4],
                              help="First … agents should be set to training mode")
     play_parser.add_argument("--continue-without-training", default=False, action="store_true")
@@ -111,17 +115,20 @@ def main(argv = None):
 
     play_parser.add_argument("--scenario", default="classic", choices=s.SCENARIOS)
 
-    play_parser.add_argument("--seed", type=int, help="Reset the world's random number generator to a known number for reproducibility")
+    play_parser.add_argument("--seed", type=int,
+                             help="Reset the world's random number generator to a known number for reproducibility")
 
     play_parser.add_argument("--n-rounds", type=int, default=10, help="How many rounds to play")
-    play_parser.add_argument("--save-replay", const=True, default=False, action='store', nargs='?', help='Store the game as .pt for a replay')
+    play_parser.add_argument("--save-replay", const=True, default=False, action='store', nargs='?',
+                             help='Store the game as .pt for a replay')
     play_parser.add_argument("--match-name", help="Give the match a name")
 
     play_parser.add_argument("--silence-errors", default=False, action="store_true", help="Ignore errors from agents")
 
     group = play_parser.add_mutually_exclusive_group()
     group.add_argument("--skip-frames", default=False, action="store_true", help="Play several steps per GUI render.")
-    group.add_argument("--no-gui", default=False, action="store_true", help="Deactivate the user interface and play as fast as possible.")
+    group.add_argument("--no-gui", default=False, action="store_true",
+                       help="Deactivate the user interface and play as fast as possible.")
 
     # Replay arguments
     replay_parser = subparsers.add_parser("replay")
@@ -134,13 +141,16 @@ def main(argv = None):
         sub.add_argument("--update-interval", type=float, default=0.1,
                          help="How often agents take steps (ignored without GUI)")
         sub.add_argument("--log-dir", default=os.path.dirname(os.path.abspath(__file__)) + "/logs")
-        sub.add_argument("--save-stats", const=True, default=False, action='store', nargs='?', help='Store the game results as .json for evaluation')
+        sub.add_argument("--save-stats", const=True, default=False, action='store', nargs='?',
+                         help='Store the game results as .json for evaluation')
 
         # Video?
         sub.add_argument("--make-video", const=True, default=False, action='store', nargs='?',
                          help="Make a video from the game")
 
     args = parser.parse_args(argv)
+    print(argv)
+    print(args)
     if args.command_name == "replay":
         args.no_gui = False
         args.n_rounds = 1
@@ -175,10 +185,46 @@ def main(argv = None):
         gui = GUI(world)
     else:
         gui = None
-    world_controller(world, args.n_rounds,
-                     gui=gui, every_step=every_step, turn_based=args.turn_based,
-                     make_video=args.make_video, update_interval=args.update_interval)
+    # world_controller(world, args.n_rounds,
+    #                 gui=gui, every_step=every_step, turn_based=args.turn_based,
+    #                 make_video=args.make_video, update_interval=args.update_interval)
+
+    n_rounds = round(args.n_rounds / mp.cpu_count())
+    pool = mp.Pool(mp.cpu_count())
+    w_c_m = partial(world_controller_mp,
+                    world=world,
+                    n_rounds=n_rounds,
+                    every_step=every_step,
+                    turn_based=args.turn_based,
+                    make_video=args.make_video,
+                    update_interval=args.update_interval)
+
+    pool.map(w_c_m)
+    world.end()
 
 
 if __name__ == '__main__':
     main()
+    # main(["play", "--my-agent", "agent_info", "--no-gui", "--train", "1", "--n-rounds", "1"])
+
+
+def world_controller_mp(world, n_rounds, /, every_step, turn_based, make_video, update_interval):
+    user_input = None
+    for _ in tqdm(range(n_rounds)):
+        world.new_round()
+        while world.running:
+            # Check GUI events
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return
+                elif event.type == pygame.KEYDOWN:
+                    key_pressed = event.key
+                    if key_pressed in ESCAPE_KEYS:
+                        world.end_round()
+                    elif key_pressed in s.INPUT_MAP:
+                        user_input = s.INPUT_MAP[key_pressed]
+
+            # Advances step (for turn based: only if user input is available)
+            if world.running and not (turn_based and user_input is None):
+                world.do_step(user_input)
+                user_input = None

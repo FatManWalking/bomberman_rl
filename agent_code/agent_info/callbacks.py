@@ -39,9 +39,7 @@ def setup(self):
         self.action_space_size = len(ACTIONS)
 
     else:
-        self.logger.info("Loading model from saved state.")
-        with open("model.pt", "rb") as file:
-            self.model = pickle.load(file)
+        self.logger.error("No playing allowed!")
 
 
 def act(self, game_state: dict) -> str:
@@ -60,10 +58,8 @@ def act(self, game_state: dict) -> str:
         action = train_act(self, game_state)
         return action
 
-    self.logger.debug("Querying model for action")
+    # self.logger.debug("Querying model for action")
     action = self.model.choose_action(features)
-    self.logger.debug("Model returnd action: ", action)
-
+    # self.logger.debug("Model returnd action: ", action)
 
     return action
-
