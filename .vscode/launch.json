@@ -19,10 +19,8 @@
                 "rule_based_agent",
                 "rule_based_agent",
                 "rule_based_agent",
-                "--save-replay",
                 "--seed",
                 "42",
-                "--no-gui"
             ]
         },
         {
@@ -36,11 +34,11 @@
                 "play",
                 "--train=1",
                 "--agent",
-                "agent_info",
+                "vinni_the_agent",
                 "--scenario",
                 "coin-heaven",
                 "--n-rounds",
-                "10_000",
+                "5_000",
                 "--no-gui"
             ]
         },
@@ -55,7 +53,7 @@
                 "play",
                 "--train=0",
                 "--agent",
-                "agent_info",
+                "vinni_the_agent",
                 "--scenario",
                 "coin-heaven",
                 "--n-rounds",

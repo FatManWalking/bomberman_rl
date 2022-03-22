@@ -9,6 +9,9 @@ from .utils import state_to_features, ACTIONS
 from .model import Q_Table
 import numpy as np
 from random import shuffle
+import pprint
+
+pp = pprint.PrettyPrinter(indent=4)
 
 
 def setup(self):
@@ -42,6 +45,8 @@ def setup(self):
         self.logger.info("Loading model from saved state.")
         with open("model.pt", "rb") as file:
             self.model = pickle.load(file)
+
+            # pp.pprint(self.model.q_table)
 
 
 def act(self, game_state: dict) -> str:
