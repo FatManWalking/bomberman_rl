@@ -5,32 +5,21 @@ from tqdm import tqdm
 import settings as s
 from environment import BombeRLeWorld
 from fallbacks import pygame
+
+import threading
 import multiprocessing
+from multiprocessing.managers import BaseManager
 
 ESCAPE_KEYS = (pygame.K_q, pygame.K_ESCAPE)
 
-def world_controller(world, n_rounds, /, turn_based):
+def world_controller(world, n_rounds):
 
     user_input = None
-    
-    def play_round():
+    for _ in tqdm(range(n_rounds)):
         world.new_round()
         while world.running:
-    
-            # Advances step (for turn based: only if user input is available)
-            if world.running and not (turn_based and user_input is None):
-                world.do_step(user_input)
-                user_input = None
-            else:
-                # Might want to wait
-                pass
-    
-    a_pool = multiprocessing.Pool()
 
-    a_pool.map(play_round, range(n_rounds))
-
-    world.end()
-
+            world.do_step(user_input)
 
 def main(argv = None):
     parser = ArgumentParser()
@@ -42,25 +31,21 @@ def main(argv = None):
     agent_group = play_parser.add_mutually_exclusive_group()
     agent_group.add_argument("--my-agent", type=str, help="Play agent of name ... against three rule_based_agents")
     agent_group.add_argument("--agents", type=str, nargs="+", default=["rule_based_agent"] * s.MAX_AGENTS, help="Explicitly set the agent names in the game")
-    play_parser.add_argument("--train", default=0, type=int, choices=[0, 1, 2, 3, 4],
+    play_parser.add_argument("--train", default=1, type=int, choices=[0, 1, 2, 3, 4],
                              help="First … agents should be set to training mode")
-    play_parser.add_argument("--continue-without-training", default=False, action="store_true")
-    # play_parser.add_argument("--single-process", default=False, action="store_true")
 
     play_parser.add_argument("--scenario", default="classic", choices=s.SCENARIOS)
 
     play_parser.add_argument("--seed", type=int, help="Reset the world's random number generator to a known number for reproducibility")
 
     play_parser.add_argument("--n-rounds", type=int, default=10, help="How many rounds to play")
-    play_parser.add_argument("--save-replay", const=True, default=False, action='store', nargs='?', help='Store the game as .pt for a replay')
     play_parser.add_argument("--match-name", help="Give the match a name")
 
     play_parser.add_argument("--silence-errors", default=False, action="store_true", help="Ignore errors from agents")
 
     # Interaction
     for sub in [play_parser]:
-        sub.add_argument("--turn-based", default=False, action="store_true",
-                         help="Wait for key press until next movement")
+    
         sub.add_argument("--log-dir", default=os.path.dirname(os.path.abspath(__file__)) + "/logs")
         sub.add_argument("--save-stats", const=True, default=False, action='store', nargs='?', help='Store the game results as .json for evaluation')
 
@@ -82,9 +67,32 @@ def main(argv = None):
     else:
         raise ValueError(f"Unknown command {args.command_name}")
 
-    world_controller(world, args.n_rounds,
-                     turn_based=args.turn_based)
+    world_controller(world, args.n_rounds)
+    world.end()
 
+class Data:
+    def __init__(self,data=None):
+        self.data = data
+
+    def get(self):
+        return self.data
+
+    def set(self,data):
+        self.data = data
+
+def test(name,data,lock):
+    lock.acquire()
+    print("in thread {} name is {}".format(threading.current_thread(),name))
+    print("data is {} id(data) is {}".format(data.get(),id(data)))
+    data.set(data.get()+1)
+    lock.release()
+
+BaseManager.register("mydata",Data)
+
+def getManager():
+    m = BaseManager()
+    m.start()
+    return m
 
 if __name__ == '__main__':
     main()
