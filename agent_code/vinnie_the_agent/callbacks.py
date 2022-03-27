@@ -57,7 +57,7 @@ def act(self, game_state: dict) -> str:
         self.currentRound = game_state["round"]
 
     features = state_to_features(game_state)
-    self.logger.debug(f"Features are\n{features}")
+    # self.logger.debug(f"Features are\n{features}")
 
     if self.train:
         action = train_act(self, game_state)

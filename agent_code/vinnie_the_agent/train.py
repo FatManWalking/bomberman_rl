@@ -49,18 +49,22 @@ def setup_training(self):
             pickle.dump(self.model, file)
 
     self.batch_size = 10
+    self.saveCounter = 0
     rb_setup(self)
 
 
 def train_act(self, game_state):
 
     if random.uniform(0, 1) > self.model.epsilon:
+        #self.logger.debug(f"Epsilon:{self.model.epsilon}")
         # self.action is the unique action chosen by the agent
         action = rb_act(self, game_state)
     else:
+        #self.logger.debug("Own Move")
         features = state_to_features(game_state)
         action = self.model.choose_action(features)
 
+    #action = rb_act(self, game_state)
     self.logger.debug(f"Action taken:{action}")
     return action
 
@@ -138,9 +142,13 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
         )
     )
 
-    # Store the model
-    with open("model.pt", "wb") as file:
-        pickle.dump(self.model, file)
+    if self.saveCounter <= 0:
+        # Store the model
+        with open("model.pt", "wb") as file:
+            pickle.dump(self.model, file)
+        self.saveCounter = 50
+
+    self.saveCounter -= 1
 
 
 def reward_from_events(self, events: List[str]) -> int:
