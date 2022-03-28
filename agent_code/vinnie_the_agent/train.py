@@ -49,12 +49,15 @@ def setup_training(self):
             pickle.dump(self.model, file)
 
     self.batch_size = 10
+    self.saveCounter = 0
     rb_setup(self)
+    self.lastAction = "SPAWN"
 
 
 def train_act(self, game_state):
 
     if random.uniform(0, 1) < self.model.epsilon:
+
         # self.action is the unique action chosen by the agent
         self.model.actions[random.randint(0, 5)]
 
@@ -62,9 +65,11 @@ def train_act(self, game_state):
         action = rb_act(self, game_state)
 
     else:
+        #self.logger.debug("Own Move")
         features = state_to_features(game_state)
         action = self.model.choose_action(features)
 
+    #action = rb_act(self, game_state)
     self.logger.debug(f"Action taken:{action}")
     return action
 
@@ -96,9 +101,17 @@ def game_events_occurred(
         f'Encountered game event(s) {", ".join(map(repr, events))} in step {new_game_state["step"]}'
     )
 
+    #self.logger.debug(
+    #    f'Last action {self.lastAction} and self_action {self_action}'
+    #)
     # Idea: Add your own events to hand out rewards
     if new_game_state["self"][3] in self.lastPositions:
-        events.append(REPETITION_EVENT)
+        if not self_action.__eq__("BOMB" and "WAIT"):
+            events.append(REPETITION_EVENT)
+        if self_action.__eq__("BOMB" and "WAIT") and self.lastAction.__eq__("BOMB" and "WAIT"):
+            events.append(REPETITION_EVENT)
+
+    self.lastAction = self_action
 
     self.lastPositions.append(new_game_state["self"][3])
 
@@ -142,9 +155,14 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
         )
     )
 
-    # Store the model
-    with open("model.pt", "wb") as file:
-        pickle.dump(self.model, file)
+    if self.saveCounter <= 0:
+        # Store the model
+        with open("model.pt", "wb") as file:
+            pickle.dump(self.model, file)
+        self.saveCounter = 9999
+
+    self.saveCounter -= 1
+    self.lastAction = "SPAWN"
 
 
 def reward_from_events(self, events: List[str]) -> int:
@@ -155,20 +173,20 @@ def reward_from_events(self, events: List[str]) -> int:
     certain behavior.
     """
     game_rewards = {
-        e.COIN_COLLECTED: 10,
+        e.COIN_COLLECTED: 15,
         e.KILLED_OPPONENT: 20,
         e.WAITED: -1,
         e.INVALID_ACTION: -5,
-        e.MOVED_LEFT: 1,
-        e.MOVED_RIGHT: 1,
-        e.MOVED_UP: 1,
-        e.MOVED_DOWN: 1,
-        REPETITION_EVENT: -5,
-        e.BOMB_DROPPED: 5.1,
-        e.CRATE_DESTROYED: 5,
-        e.COIN_FOUND: 7,
+        e.MOVED_LEFT: 2,
+        e.MOVED_RIGHT: 2,
+        e.MOVED_UP: 2,
+        e.MOVED_DOWN: 2,
+        REPETITION_EVENT: -0.5,
+        e.BOMB_DROPPED: 1.5,
+        e.CRATE_DESTROYED: 7,
+        e.COIN_FOUND: 10,
         e.KILLED_SELF: -20,
-        e.GOT_KILLED: -10,
+        e.GOT_KILLED: -5,
         e.SURVIVED_ROUND: 20,
     }
     reward_sum = 0
