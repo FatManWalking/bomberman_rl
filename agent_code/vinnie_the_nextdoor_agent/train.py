@@ -5,7 +5,7 @@ from typing import List
 from agent_code.rule_based_agent.callbacks import act as rb_act, setup as rb_setup
 import events as e
 from .model import DQNSolver, Q_Table
-from .utils import state_to_features, ACTIONS, predict_input
+from .utils import state_to_features, ACTIONS
 import random
 import dill as pickle
 
@@ -104,7 +104,14 @@ def game_events_occurred(
 
     # Idea: Add your own events to hand out rewards
     if new_game_state["self"][3] in self.lastPositions:
-        events.append(REPETITION_EVENT)
+        if not self_action.__eq__("BOMB" and "WAIT"):
+            events.append(REPETITION_EVENT)
+        if self_action.__eq__("BOMB" and "WAIT") and self.lastAction.__eq__(
+            "BOMB" and "WAIT"
+        ):
+            events.append(REPETITION_EVENT)
+
+    self.lastAction = self_action
 
     self.lastPositions.append(new_game_state["self"][3])
 

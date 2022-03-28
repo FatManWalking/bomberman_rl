@@ -1,7 +1,5 @@
 import os
 import dill as pickle
-from typing import Dict, List, Tuple
-from unicodedata import category
 from .train import train_act
 import numpy as np
 from .utils import state_to_features, ACTIONS, action_rotation, predict_input

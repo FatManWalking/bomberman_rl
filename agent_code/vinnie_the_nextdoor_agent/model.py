@@ -1,6 +1,5 @@
 import numpy as np
-import random
-from .utils import predict_input, state_to_features
+from .utils import state_to_features
 from collections import defaultdict
 
 # from sklearn.ensemble import RandomForestClassifier
