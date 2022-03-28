@@ -9,7 +9,9 @@ class Q_Table:
         self.alpha = 0.3  #
         self.gamma = 0.7  #
         self.epsilon = 1
+
         self.min_exploration = 0.1
+
         self.exploration_decay = 0.98
 
         self.game = game

@@ -57,10 +57,13 @@ def setup_training(self):
 def train_act(self, game_state):
 
     if random.uniform(0, 1) < self.model.epsilon:
-        #self.logger.debug(f"Epsilon:{self.model.epsilon}")
-        #self.action is the unique action chosen by the agent
-        #action = rb_act(self, game_state)
-        action = self.model.actions[random.randint(0, 5)]
+
+        # self.action is the unique action chosen by the agent
+        self.model.actions[random.randint(0, 5)]
+
+    elif random.uniform(0.3, 1) < self.model.epsilon:
+        action = rb_act(self, game_state)
+
     else:
         #self.logger.debug("Own Move")
         features = state_to_features(game_state)
