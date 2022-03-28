@@ -38,7 +38,7 @@ def setup_training(self):
     self.lastPositions = deque(maxlen=LAST_POSITION_HISTORY_SIZE)
 
     # save-frequence , not used yet just saving at the end of each round
-    self.saveCounter = 999
+    self.saveCounter = 30_000
 
     # The 'model' in whatever form (NN, QT, MCT ...)
     if self.continue_train:
@@ -167,7 +167,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
         with open("model.pt", "wb") as file:
             pickle.dump(self.model, file)
 
-        self.saveCounter = 499
+        self.saveCounter = 2_000
 
     self.saveCounter -= 1
 

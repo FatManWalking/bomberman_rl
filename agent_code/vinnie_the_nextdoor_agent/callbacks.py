@@ -72,7 +72,7 @@ def act(self, game_state: dict) -> str:
         q_values = self.model.classifier.predict(predict_input(features))
 
     action = self.model.actions[np.argmax(q_values[0])]
-    self.logger.debug("Model returned action: ", action)
+    self.logger.debug(f"Model returned action: {action}")
 
     return action
 

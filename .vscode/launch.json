@@ -118,7 +118,7 @@
                 "rule_based_agent",
                 "rule_based_agent",
                 "--n-rounds",
-                "10_000",
+                "40_001",
                 "--no-gui",
             ]
         },
