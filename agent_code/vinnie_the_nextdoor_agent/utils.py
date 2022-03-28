@@ -44,7 +44,7 @@ def state_to_features(game_state: dict) -> np.array:
     feature.append(int(game_state["self"][2]))  # Can we set a bomb ?
 
     # return np.array([vision, list(ownPosition), list(target[0]), target[1], int(game_state["self"][2])]).flatten()
-    return feature
+    return tuple(feature)
     # assert len(feature) == 31, "this cant be"
     # return tuple(feature)
 

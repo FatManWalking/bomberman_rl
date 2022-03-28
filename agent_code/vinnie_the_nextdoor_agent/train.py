@@ -4,7 +4,7 @@ import numpy as np
 from typing import List
 from agent_code.rule_based_agent.callbacks import act as rb_act, setup as rb_setup
 import events as e
-from .model import DQNSolver
+from .model import DQNSolver, Q_Table
 from .utils import state_to_features, ACTIONS, predict_input
 import random
 import dill as pickle
@@ -38,16 +38,22 @@ def setup_training(self):
     self.lastPositions = deque(maxlen=LAST_POSITION_HISTORY_SIZE)
 
     # save-frequence , not used yet just saving at the end of each round
-    self.saves = ...
+    self.saveCounter = 999
 
     # The 'model' in whatever form (NN, QT, MCT ...)
     if self.continue_train:
         with open("model.pt", "rb") as file:
             self.model = pickle.load(file)
+        with open("q_table.pt", "rb") as file:
+            self.q_table = pickle.load(file)
     else:
         self.model = DQNSolver(self, ACTIONS)
         with open("model.pt", "wb") as file:
             pickle.dump(self.model, file)
+
+        self.q_table = Q_Table(self, ACTIONS)
+        with open("q_table.pt", "wb") as file:
+            pickle.dump(self.q_table, file)
 
     self.batch_size = BATCH_SIZE
     rb_setup(self)
@@ -55,15 +61,18 @@ def setup_training(self):
 
 def train_act(self, gamestate):
 
-    if np.random.rand() < self.model.exploration_rate:
-        return rb_act(self, gamestate)
-    elif self.model.isFit == True:
-        features = state_to_features(gamestate)
-        q_values = self.model.classifier.predict(predict_input(features))
-        self.logger.debug(f"Log Probabilities of choosing actions {q_values}")
+    if random.uniform(0, 1) < self.model.epsilon:
+        # self.action is the unique action chosen by the agent
+        action = self.model.actions[random.randint(0, 5)]
+
+    elif random.uniform(0, 1) < self.model.epsilon:
+        action = rb_act(self, gamestate)
+
     else:
-        q_values = np.zeros(self.action_space).reshape(1, -1)
-    return self.model.actions[np.argmax(q_values[0])]
+        features = state_to_features(gamestate)
+        action = self.q_table.choose_action(features)
+
+    return action
 
 
 def game_events_occurred(
@@ -102,7 +111,7 @@ def game_events_occurred(
     self.transitions.append(
         Transition(
             state_to_features(old_game_state),
-            np.where(self.model.actions == self_action)[0],
+            np.where(self.q_table.actions == self_action)[0],
             state_to_features(new_game_state),
             reward_from_events(self, events),
         )
@@ -129,20 +138,31 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     self.transitions.append(
         Transition(
             state_to_features(last_game_state),
-            np.where(self.model.actions == last_action)[0],
+            np.where(self.q_table.actions == last_action)[0],
             None,
             reward_from_events(self, events),
         )
     )
-    try:
-        self.model.experience_replay(self.transitions, self.batch_size)
+
+    if len(self.transitions) > self.batch_size:
+        batch = sample(self.transitions, self.batch_size)
+        self.q_table.update_q(batch)
+
+    if self.saveCounter <= 0:
+        # Store the model
+        self.model.experience_replay(self.q_table)
+
+        # Store the Q-table
+        with open("q_table.pt", "wb") as file:
+            pickle.dump(self.q_table, file)
 
         # Store the model
         with open("model.pt", "wb") as file:
             pickle.dump(self.model, file)
-    except KeyboardInterrupt:
-        self.logger.debug("You interrupted the training with a KeyboardInterrupt")
-        raise KeyboardInterrupt
+
+        self.saveCounter = 499
+
+    self.saveCounter -= 1
 
 
 def reward_from_events(self, events: List[str]) -> int:
@@ -161,8 +181,8 @@ def reward_from_events(self, events: List[str]) -> int:
         e.MOVED_RIGHT: 1,
         e.MOVED_UP: 1,
         e.MOVED_DOWN: 1,
-        REPETITION_EVENT: -5,
-        e.BOMB_DROPPED: 5.1,
+        REPETITION_EVENT: -1,
+        e.BOMB_DROPPED: 3,
         e.CRATE_DESTROYED: 5,
         e.COIN_FOUND: 7,
         e.KILLED_SELF: -20,

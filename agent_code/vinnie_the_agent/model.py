@@ -8,9 +8,9 @@ class Q_Table:
 
         self.alpha = 0.3  #
         self.gamma = 0.7  #
-        self.epsilon = 0.01
+        self.epsilon = 1
         self.min_exploration = 0.3
-        self.exploration_decay = 1e-4
+        self.exploration_decay = 0.98
 
         self.game = game
 
@@ -54,7 +54,7 @@ class Q_Table:
             self.q_table[old_ft][action_index] = updated_q
 
             if self.epsilon < 1 - self.min_exploration:
-                self.epsilon += self.exploration_decay
+                self.epsilon *= self.exploration_decay
 
     def update_terminal(self, old_game_state, self_action, rewards):
 

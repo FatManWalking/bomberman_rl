@@ -41,6 +41,9 @@ def setup(self):
         with open("model.pt", "rb") as file:
             self.model = pickle.load(file)
 
+        with open("q_table.pt", "rb") as file:
+            self.q_table = pickle.load(file)
+
 
 def act(self, game_state: dict) -> str:
     """
@@ -58,14 +61,18 @@ def act(self, game_state: dict) -> str:
         )  # TODO self.model.actions = action_rotation(game_state)
         self.currentRound = game_state["round"]
 
-    features = state_to_features(game_state)
-    self.logger.debug(f"Features are\n{features}")
-
     if self.train:
         action = train_act(self, game_state)
         return action
 
-    q_values = self.model.classifier.predict(predict_input(features))
+    features = state_to_features(game_state)
+    self.logger.debug(f"Features are\n{features}")
+
+    if features in self.q_table.q_table:
+        q_values = self.q_table.q_table[features]
+    else:
+        q_values = self.model.classifier.predict(predict_input(features))
+
     action = self.model.actions[np.argmax(q_values[0])]
     self.logger.debug("Model returned action: ", action)
 

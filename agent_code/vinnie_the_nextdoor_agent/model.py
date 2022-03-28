@@ -1,10 +1,11 @@
 import numpy as np
 import random
-import numpy as np
-from .utils import predict_input
+from .utils import predict_input, state_to_features
+from collections import defaultdict
 
 # from sklearn.ensemble import RandomForestClassifier
-# from sklearn.multioutput import MultiOutputRegressor
+from sklearn.multioutput import MultiOutputRegressor
+
 # from lightgbm import LGBMRegressor
 from sklearn.neighbors import KNeighborsRegressor
 
@@ -25,43 +26,110 @@ class DQNSolver:
         self.action_space = len(actions)
         self.actions = actions
 
+        self.alpha = 0.3  #
+        self.gamma = 0.7  #
+        self.epsilon = 1
+        self.min_exploration = 0.3
+        self.exploration_decay = 0.98
+
         # self.classifier = RandomForestClassifier(n_estimators=100, n_jobs=-1, verbose=1)
         # self.classifier = MultiOutputRegressor(
         #    LGBMRegressor(n_estimators=100, n_jobs=-1)
         # )
-        self.classifier = KNeighborsRegressor(n_jobs=-1, n_neighbors=3)
+        self.classifier = MultiOutputRegressor(
+            KNeighborsRegressor(n_jobs=-1, n_neighbors=3)
+        )
         # self.classifier = MultiOutputRegressor(SVR(), n_jobs=8)
         self.isFit = False
 
-    def experience_replay(self, transitions, batch_size=30):
-        if len(transitions) < batch_size:
-            return
-        batch = random.sample(transitions, int(len(transitions) / 1))
-        X = []
-        targets = []
-        for state, action, state_next, reward in batch:
-            if action != None:
-                q_update = reward
+    def experience_replay(self, q_table):
 
-                if self.isFit and isinstance(state_next, list):
-                    q_update = reward + GAMMA * np.amax(
-                        self.classifier.predict(predict_input(state_next))[0]
-                    )
-                    q_values = self.classifier.predict(predict_input(state))
-                elif self.isFit and state_next == None:
-                    q_values = self.classifier.predict(predict_input(state))
-                    q_update = reward
-                else:
-                    q_update = reward
-                    q_values = np.zeros(self.action_space).reshape(1, -1)
+        table = np.zeros((len(q_table.q_table), 31))
+        actions = np.zeros((len(q_table.q_table), 6))
 
-                q_values[0][action] = q_update
+        for (key, value), i in zip(
+            q_table.q_table.items(), range(len(q_table.q_table))
+        ):
 
-                X.append(state)
-                targets.append(q_values)
+            # table = np.insert(table, i, key, axis=0)
+            table[i] = key
+            # actions = np.insert(actions, i, value, axis=0)
+            actions[i] = value
 
-        targets = np.argmax(targets, axis=1)
-        self.classifier.fit(X, targets)
+        self.classifier.fit(table, actions)
         self.isFit = True
         self.exploration_rate *= EXPLORATION_DECAY
         self.exploration_rate = max(EXPLORATION_MIN, self.exploration_rate)
+
+
+class Q_Table:
+    def __init__(self, game, actions) -> None:
+
+        self.alpha = 0.3  #
+        self.gamma = 0.7  #
+        self.epsilon = 1
+        self.min_exploration = 0.3
+        self.exploration_decay = 0.98
+
+        self.game = game
+
+        self.actions = actions
+
+        self.q_table = defaultdict(
+            lambda: np.zeros([game.action_space_size])
+        )  # We should start small and build as goes for faster look ups and less memory usage
+
+    def choose_action(self, features):
+
+        action_index = np.argmax(self.q_table[features])
+        return self.actions[action_index]
+
+    def update_q(self, batch):
+
+        for sample in batch:
+
+            old_ft = sample[0]
+            action_index = sample[1]
+            new_ft = sample[2]
+            rewards = sample[3]
+
+            if type(old_ft) is not tuple:
+                self.game.logger.debug(f"{old_ft} was not a tuple")
+                return None
+
+            if type(new_ft) is not tuple:
+                self.game.logger.debug(f"{new_ft} was not a tuple")
+                return None
+
+            # We do not have to check if either of those exist
+            # If they dont default dict creates an np.zero array for us with that key
+            exspected_reward = self.q_table[old_ft][action_index]
+            max_next_reward = np.max(self.q_table[new_ft])
+
+            # The actual Q update step based on temporal difference
+            updated_q = (1 - self.alpha) * exspected_reward + self.alpha * (
+                rewards + self.gamma * max_next_reward
+            )
+            self.q_table[old_ft][action_index] = updated_q
+
+            if self.epsilon < 1 - self.min_exploration:
+                self.epsilon *= self.exploration_decay
+
+    def update_terminal(self, old_game_state, self_action, rewards):
+
+        action_index = self.actions[self_action]
+        old_ft = state_to_features(old_game_state)
+
+        if type(old_ft) is not tuple:
+            self.game.logger.debug(f"{old_ft} was not a tuple")
+            return None
+
+        # We do not have to check if either of those exist
+        # If they dont default dict creates an np.zero array for us with that key
+        exspected_reward = self.q_table[old_ft][action_index]
+
+        # The actual Q update step based on temporal difference
+        updated_q = (1 - self.alpha) * exspected_reward + self.alpha * rewards
+
+        self.q_table[old_ft][action_index] = updated_q
+
