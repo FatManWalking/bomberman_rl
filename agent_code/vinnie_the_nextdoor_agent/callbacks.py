@@ -4,6 +4,11 @@ from .train import train_act
 import numpy as np
 from .utils import state_to_features, ACTIONS, action_rotation, predict_input
 
+# import neptune.new as neptune
+# import neptune.new.integrations.sklearn as npt_utils
+
+# import json
+
 
 def setup(self):
     """
@@ -20,12 +25,17 @@ def setup(self):
     :param self: This object is passed to all callbacks and you can set arbitrary values.
     """
     self.currentRound = 0
+    # with open("secret.json", "r") as f:
+    #     dic = json.load(f)
+    # self.run = neptune.init(
+    #     project="fatmanwalking/Bomberman", api_token=dic["api_token"],
+    # )
+    # self.npt_utils = npt_utils
 
     # check if we are in training mode and if the model already exists
     if self.train or not os.path.isfile("model.pt"):
 
         self.logger.info("Training model.")
-
         # Deactivate if u want to train a completely new agent
         if os.path.isfile("model.pt"):
             self.continue_train = True

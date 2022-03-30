@@ -8,6 +8,8 @@ from .model import DQNSolver, Q_Table
 from .utils import state_to_features, ACTIONS
 import random
 import dill as pickle
+import neptune.new as neptune
+import neptune.new.integrations.sklearn as npt_utils
 
 # from .callbacks import state_to_features
 
@@ -38,7 +40,9 @@ def setup_training(self):
     self.lastPositions = deque(maxlen=LAST_POSITION_HISTORY_SIZE)
 
     # save-frequence , not used yet just saving at the end of each round
-    self.saveCounter = 30_000
+    self.saveCounter = 50_000
+    self.log_counter = 0
+    self.round_rewards = [0]
 
     # The 'model' in whatever form (NN, QT, MCT ...)
     if self.continue_train:
@@ -142,6 +146,8 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
         f'Encountered event(s) {", ".join(map(repr, events))} in final step'
     )
 
+    self.round_rewards.append([0])
+
     self.transitions.append(
         Transition(
             state_to_features(last_game_state),
@@ -167,8 +173,13 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
         with open("model.pt", "wb") as file:
             pickle.dump(self.model, file)
 
-        self.saveCounter = 2_000
+        self.saveCounter = 10_000
 
+        np.save("round_rewards.npy", self.round_rewards)
+        # if self.log_counter > 120_000:
+        #    self.run.stop()
+
+    self.log_counter += 1
     self.saveCounter -= 1
 
 
@@ -201,4 +212,7 @@ def reward_from_events(self, events: List[str]) -> int:
         if event in game_rewards:
             reward_sum += game_rewards[event]
     self.logger.info(f"Awarded {reward_sum} for events {', '.join(events)}")
+    # self.run["training/reward/step"].log(reward_sum)
+
+    self.round_rewards[-1] += reward_sum
     return reward_sum

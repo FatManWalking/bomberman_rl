@@ -118,7 +118,7 @@
                 "rule_based_agent",
                 "rule_based_agent",
                 "--n-rounds",
-                "40_001",
+                "120_001",
                 "--no-gui",
             ]
         },
@@ -139,6 +139,8 @@
                 "rule_based_agent",
                 "--n-rounds",
                 "10",
+                "--no-gui",
+                "--save-stats"
             ]
         },
         {

@@ -10,6 +10,10 @@ from sklearn.neighbors import KNeighborsRegressor
 
 # from sklearn.classifier_selection import train_test_split
 
+# import neptune.new as neptune
+# import neptune.new.integrations.sklearn as npt_utils
+# import json
+
 GAMMA = 0.95
 LEARNING_RATE = 0.001
 
@@ -41,6 +45,24 @@ class DQNSolver:
         # self.classifier = MultiOutputRegressor(SVR(), n_jobs=8)
         self.isFit = False
 
+    # def __getstate__(self):
+    #     state = self.__dict__.copy()
+    #     # Don't pickle the neptune ai logger
+    #     del state["game"].__dict__["run"]
+    #     del state["game"].__dict__["npt_utils"]
+
+    #     return state
+
+    # def __setstate__(self, state):
+    #     self.__dict__.update(state)
+    #     # Add back since it doesn't exist in the pickle
+    #     with open("secret.json", "r") as f:
+    #         dic = json.load(f)
+    #     self.game.run = neptune.init(
+    #         project="fatmanwalking/Bomberman", api_token=dic["api_token"],
+    #     )
+    #     self.game.npt_utils = npt_utils
+
     def experience_replay(self, q_table):
 
         table = np.zeros((len(q_table.q_table), 31))
@@ -50,12 +72,15 @@ class DQNSolver:
             q_table.q_table.items(), range(len(q_table.q_table))
         ):
 
-            # table = np.insert(table, i, key, axis=0)
             table[i] = key
-            # actions = np.insert(actions, i, value, axis=0)
             actions[i] = value
 
         self.classifier.fit(table, actions)
+
+        # self.game.run["classifier"] = self.game.npt_utils.create_classifier_summary(
+            self.classifier, table, table, actions, actions
+        )
+
         self.isFit = True
         self.exploration_rate *= EXPLORATION_DECAY
         self.exploration_rate = max(EXPLORATION_MIN, self.exploration_rate)
@@ -77,6 +102,22 @@ class Q_Table:
         self.q_table = defaultdict(
             lambda: np.zeros([game.action_space_size])
         )  # We should start small and build as goes for faster look ups and less memory usage
+
+    # def __getstate__(self):
+    #     state = self.__dict__.copy()
+    #     # Don't pickle the neptune ai logger
+    #     del state["game"].__dict__["run"]
+    #     del state["game"].__dict__["npt_utils"]
+
+    # def __setstate__(self, state):
+    #     self.__dict__.update(state)
+    #     # Add back since it doesn't exist in the pickle
+    #     with open("secret.json", "r") as f:
+    #         dic = json.load(f)
+    #     self.game.run = neptune.init(
+    #         project="fatmanwalking/Bomberman", api_token=dic["api_token"],
+    #     )
+    #     self.game.npt_utils = npt_utils
 
     def choose_action(self, features):
 
