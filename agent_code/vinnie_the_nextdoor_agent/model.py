@@ -78,8 +78,8 @@ class DQNSolver:
         self.classifier.fit(table, actions)
 
         # self.game.run["classifier"] = self.game.npt_utils.create_classifier_summary(
-            self.classifier, table, table, actions, actions
-        )
+        #    self.classifier, table, table, actions, actions
+        # )
 
         self.isFit = True
         self.exploration_rate *= EXPLORATION_DECAY

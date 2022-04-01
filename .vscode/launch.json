@@ -123,6 +123,25 @@
             ]
         },
         {
+            "name": "KNN Heaven",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}\\main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "play",
+                "--train=1",
+                "--agent",
+                "vinnie_the_nextdoor_agent",
+                "--scenario",
+                "coin-heaven",
+                "--n-rounds",
+                "70_001",
+                "--no-gui",
+            ]
+        },
+        {
             "name": "KNN Play",
             "type": "python",
             "request": "launch",

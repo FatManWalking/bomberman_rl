@@ -8,8 +8,9 @@ from .model import DQNSolver, Q_Table
 from .utils import state_to_features, ACTIONS
 import random
 import dill as pickle
-import neptune.new as neptune
-import neptune.new.integrations.sklearn as npt_utils
+
+# import neptune.new as neptune
+# import neptune.new.integrations.sklearn as npt_utils
 
 # from .callbacks import state_to_features
 
@@ -146,8 +147,6 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
         f'Encountered event(s) {", ".join(map(repr, events))} in final step'
     )
 
-    self.round_rewards.append([0])
-
     self.transitions.append(
         Transition(
             state_to_features(last_game_state),
@@ -179,7 +178,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
         # if self.log_counter > 120_000:
         #    self.run.stop()
 
-    self.log_counter += 1
+    self.round_rewards.append(0)
     self.saveCounter -= 1
 
 
